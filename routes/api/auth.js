@@ -1,11 +1,25 @@
 const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const gravatar = require("gravatar");
+const path = require("path");
+const fs = require("fs/promises");
+const Jimp = require("jimp");
+
 const { User, schemas } = require("../../models/user");
 
 const { HttpError } = require("../../helpers");
-const { authenticate } = require("../../middlewares");
+const { authenticate, upload } = require("../../middlewares");
+
 const { SECRET_KEY } = process.env;
+
+const avatarsDir = path.join(
+	__dirname,
+	"../",
+	"../",
+	"public",
+	"avatars"
+);
 
 const router = express.Router();
 
@@ -21,9 +35,12 @@ router.post("/register", async (req, res, next) => {
 			throw HttpError(409, "Email in use");
 		}
 		const hashPassword = await bcrypt.hash(password, 10);
+		const avatarURL = gravatar.url(email);
+
 		const newUser = await User.create({
 			...req.body,
 			password: hashPassword,
+			avatarURL,
 		});
 		res.status(201).json({
 			user: {
@@ -101,7 +118,6 @@ router.patch("/", authenticate, async (req, res, next) => {
 		const result = await User.findByIdAndUpdate(_id, {
 			subscription: req.body.subscription,
 		});
-		console.log(result);
 		if (!result) {
 			throw HttpError(404, "Not found");
 		}
@@ -110,5 +126,30 @@ router.patch("/", authenticate, async (req, res, next) => {
 		next(error);
 	}
 });
+
+router.patch(
+	"/avatars",
+	authenticate,
+	upload.single("avatar"),
+	async (req, res, next) => {
+		try {
+			const { _id } = req.user;
+			const { path: tempUpload, originalname } = req.file;
+			const filename = `${_id}_${originalname}`;
+			const resultUpload = path.join(avatarsDir, filename);
+			await fs.rename(tempUpload, resultUpload);
+			const img = await Jimp.read(resultUpload);
+			img.resize(250, 250);
+			img.write(resultUpload);
+			const avatarURL = path.join("avatars", filename);
+			await User.findByIdAndUpdate(_id, { avatarURL });
+			res.json({
+				avatarURL,
+			});
+		} catch (error) {
+			next(error);
+		}
+	}
+);
 
 module.exports = router;
