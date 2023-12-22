@@ -49,7 +49,7 @@ router.post("/register", async (req, res, next) => {
 		const verifyEmail = {
 			to: email,
 			subject: "Verify email",
-			html: `<a target="_blank" href="${BASE_URL}/auth/verify/${verificationToken}">Click to verify email</a>`,
+			html: `<a target="_blank" href="${BASE_URL}/users/verify/${verificationToken}">Click to verify email</a>`,
 		};
 		await sendEmail(verifyEmail);
 		res.status(201).json({
@@ -119,37 +119,33 @@ router.get("/verify/:verificationToken", async (req, res, next) => {
 		next(error);
 	}
 });
-router.post(
-	"/verify",
-	schemas.emailSchema,
-	async (req, res, next) => {
-		try {
-			const { error } = schemas.registerSchema.validate(req.body);
-			if (error) {
-				throw HttpError(400, "Missing required field");
-			}
-			const { email } = req.body;
-			const user = await User.findOne({ email });
-			if (!user) {
-				throw HttpError(404, "Email not found");
-			}
-			if (user.verify) {
-				throw HttpError(400, "Verification has already been passed");
-			}
-			const verifyEmail = {
-				to: email,
-				subject: "Verify email",
-				html: `<a target="_blank" href="${BASE_URL}/auth/verify/${user.verificationToken}">Click to verify email</a>`,
-			};
-			await sendEmail(verifyEmail);
-			res.json({
-				message: "Verification email sent",
-			});
-		} catch (error) {
-			next(error);
+router.post("/verify", async (req, res, next) => {
+	try {
+		const { error } = schemas.emailSchema.validate(req.body);
+		if (error) {
+			throw HttpError(400, "Missing required field");
 		}
+		const { email } = req.body;
+		const user = await User.findOne({ email });
+		if (!user) {
+			throw HttpError(404, "Email not found");
+		}
+		if (user.verify) {
+			throw HttpError(400, "Verification has already been passed");
+		}
+		const verifyEmail = {
+			to: email,
+			subject: "Verify email",
+			html: `<a target="_blank" href="${BASE_URL}/users/verify/${user.verificationToken}">Click to verify email</a>`,
+		};
+		await sendEmail(verifyEmail);
+		res.json({
+			message: "Verification email sent",
+		});
+	} catch (error) {
+		next(error);
 	}
-);
+});
 router.post("/logout", authenticate, async (req, res, next) => {
 	try {
 		const { _id } = req.user;

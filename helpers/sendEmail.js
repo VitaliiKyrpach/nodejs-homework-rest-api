@@ -1,37 +1,27 @@
 const nodemailer = require("nodemailer");
 require("dotenv").config();
 
-const { META_PASSWORD } = process.env;
+const { BREVO_PASS, BREVO_LOGIN } = process.env;
 
 const nodemailerConfig = {
-	host: "smtp.meta.ua",
-	port: 465,
-	secure: true,
+	host: "smtp-relay.brevo.com",
+	port: 587,
 	auth: {
-		user: "vitaliikyrpach@meta.ua",
-		pass: META_PASSWORD,
+		user: BREVO_LOGIN,
+		pass: BREVO_PASS,
 	},
 };
 
 const transport = nodemailer.createTransport(nodemailerConfig);
 
 const sendEmail = async (data) => {
-	const email = { ...data, from: "vitaliikyrpach@meta.ua" };
+	const email = {
+		...data,
+		from: BREVO_LOGIN,
+	};
 	console.log(email);
 	await transport.sendMail(email);
 	return true;
 };
-
-// const email = {
-// 	to: "betoh11785@bayxs.com",
-// 	from: "vitaliikyrpach@meta.ua",
-// 	subject: "Test email",
-// 	html: "<p>Test email from main</p>",
-// };
-
-// transport
-// 	.sendMail(email)
-// 	.then(() => console.log("Email send success"))
-// 	.catch((error) => console.log(error.message));
 
 module.exports = sendEmail;
